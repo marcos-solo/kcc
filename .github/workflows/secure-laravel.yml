@@ -23,32 +23,58 @@ jobs:
           extensions: mbstring, intl, pdo_mysql
           coverage: none
 
-      # 3️⃣ Install dependencies
+      # 3️⃣ Install PHP dependencies
       - name: Install PHP dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Install Node dependencies (optional)
+      # ✅ 4️⃣ Create .env file dynamically from GitHub Secrets
+      - name: Create environment file
+        run: |
+          echo "APP_NAME=kccwg" > .env
+          echo "APP_ENV=local" >> .env
+          echo "APP_KEY=${{ secrets.APP_KEY }}" >> .env
+          echo "APP_DEBUG=true" >> .env
+          echo "APP_URL=http://localhost" >> .env
+
+          echo "DB_CONNECTION=mysql" >> .env
+          echo "DB_HOST=127.0.0.1" >> .env
+          echo "DB_PORT=3306" >> .env
+          echo "DB_DATABASE=kccwg" >> .env
+          echo "DB_USERNAME=root" >> .env
+          echo "DB_PASSWORD=" >> .env
+
+          echo "SESSION_DRIVER=database" >> .env
+          echo "SESSION_LIFETIME=120" >> .env
+
+          echo "MAIL_FROM_ADDRESS=solomonmarcos34@gmail.com" >> .env
+          echo "MAIL_FROM_NAME='KCCWG Membership'" >> .env
+
+          php artisan config:clear
+          php artisan cache:clear
+
+      # 5️⃣ Install Node dependencies (optional)
+      - name: Install Node dependencies
         run: |
           if [ -f package.json ]; then
             npm install
           fi
 
-      # 4️⃣ Run Laravel Tests
-      - name: Run PHPUnit tests
+      # 6️⃣ Run PHPUnit tests
+      - name: Run Laravel tests
         run: php artisan test
 
-      # 5️⃣ Composer Security Audit
+      # 7️⃣ Composer Security Audit
       - name: Check for PHP dependency vulnerabilities
         run: composer audit --locked
 
-      # 6️⃣ NPM Audit (optional for Laravel Mix/Vite)
+      # 8️⃣ NPM Audit (optional)
       - name: Check for npm vulnerabilities
         run: |
           if [ -f package.json ]; then
             npm audit --audit-level=moderate || true
           fi
 
-      # 7️⃣ Static Analysis (PHPStan)
+      # 9️⃣ Static Code Analysis (PHPStan)
       - name: Run static code analysis
         run: |
           if [ -f vendor/bin/phpstan ]; then
@@ -57,7 +83,7 @@ jobs:
             echo "PHPStan not installed, skipping analysis."
           fi
 
-      # 8️⃣ Scan for leaked secrets
+      # 🔟 Scan for secrets
       - name: Scan for secrets
         uses: trufflesecurity/trufflehog@v3.66.2
         with:
@@ -66,15 +92,7 @@ jobs:
           head: HEAD
           fail: true
 
-
-      # 9️⃣ Optional: OWASP ZAP Scan (basic)
-      # - name: Run OWASP ZAP baseline scan
-      #   uses: zaproxy/action-baseline@v0.7.0
-      #   with:
-      #     target: 'http://127.0.0.1:8000'
-      #   continue-on-error: true
-
-      # 🔟 Deployment Gate (only runs if all above succeed)
+      # ✅ Deployment Gate
       - name: Ready for deployment
         if: success()
-        run: echo "✅ All security and tests passed — safe to deploy!"
+        run: echo "✅ All tests and security checks passed — ready to deploy!"
