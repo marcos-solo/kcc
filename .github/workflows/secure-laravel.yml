@@ -59,10 +59,13 @@ jobs:
 
       # 8️⃣ Scan for leaked secrets
       - name: Scan for secrets
-        uses: trufflesecurity/trufflehog@v3
+        uses: trufflesecurity/trufflehog@v3.66.2
         with:
-          scan: git
+          path: .
+          base: HEAD~1
+          head: HEAD
           fail: true
+
 
       # 9️⃣ Optional: OWASP ZAP Scan (basic)
       # - name: Run OWASP ZAP baseline scan
