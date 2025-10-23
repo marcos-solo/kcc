@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout Code
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup PHP environment
+      # 2️⃣ Setup PHP
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -23,12 +23,12 @@ jobs:
           extensions: mbstring, intl, pdo_mysql
           coverage: none
 
-      # 3️⃣ Install PHP dependencies
+      # 3️⃣ Install composer dependencies
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      # ✅ 4️⃣ Create .env file dynamically from GitHub Secrets
-      - name: Create environment file
+      # ✅ 4️⃣ Create .env file and inject APP_KEY from secrets
+      - name: Setup environment file
         run: |
           echo "APP_NAME=kccwg" > .env
           echo "APP_ENV=local" >> .env
@@ -36,15 +36,9 @@ jobs:
           echo "APP_DEBUG=true" >> .env
           echo "APP_URL=http://localhost" >> .env
 
-          echo "DB_CONNECTION=mysql" >> .env
-          echo "DB_HOST=127.0.0.1" >> .env
-          echo "DB_PORT=3306" >> .env
-          echo "DB_DATABASE=kccwg" >> .env
-          echo "DB_USERNAME=root" >> .env
-          echo "DB_PASSWORD=" >> .env
-
-          echo "SESSION_DRIVER=database" >> .env
-          echo "SESSION_LIFETIME=120" >> .env
+          echo "CACHE_STORE=file" >> .env
+          echo "SESSION_DRIVER=file" >> .env
+          echo "QUEUE_CONNECTION=sync" >> .env
 
           echo "MAIL_FROM_ADDRESS=solomonmarcos34@gmail.com" >> .env
           echo "MAIL_FROM_NAME='KCCWG Membership'" >> .env
@@ -59,23 +53,23 @@ jobs:
             npm install
           fi
 
-      # 6️⃣ Run PHPUnit tests
+      # 6️⃣ Run Laravel tests
       - name: Run Laravel tests
         run: php artisan test
 
       # 7️⃣ Composer Security Audit
-      - name: Check for PHP dependency vulnerabilities
+      - name: Composer audit
         run: composer audit --locked
 
       # 8️⃣ NPM Audit (optional)
-      - name: Check for npm vulnerabilities
+      - name: NPM audit
         run: |
           if [ -f package.json ]; then
             npm audit --audit-level=moderate || true
           fi
 
-      # 9️⃣ Static Code Analysis (PHPStan)
-      - name: Run static code analysis
+      # 9️⃣ Static Analysis (PHPStan)
+      - name: PHPStan Analysis
         run: |
           if [ -f vendor/bin/phpstan ]; then
             vendor/bin/phpstan analyse --no-progress
@@ -83,8 +77,8 @@ jobs:
             echo "PHPStan not installed, skipping analysis."
           fi
 
-      # 🔟 Scan for secrets
-      - name: Scan for secrets
+      # 🔟 Secret Scan (TruffleHog)
+      - name: Secret scan
         uses: trufflesecurity/trufflehog@v3.66.2
         with:
           path: .
@@ -92,7 +86,7 @@ jobs:
           head: HEAD
           fail: true
 
-      # ✅ Deployment Gate
+      # ✅ Done
       - name: Ready for deployment
         if: success()
         run: echo "✅ All tests and security checks passed — ready to deploy!"
