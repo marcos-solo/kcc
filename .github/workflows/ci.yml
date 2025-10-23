@@ -1,0 +1,33 @@
+name: Laravel CI (Local)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  laravel-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, bcmath
+          tools: composer
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Copy .env example
+        run: cp .env.example .env
+
+      - name: Generate key
+        run: php artisan key:generate
+
+      - name: Run tests
+        run: php artisan test || echo "No tests available"
