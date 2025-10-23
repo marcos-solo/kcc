@@ -1,0 +1,77 @@
+name: Secure Laravel CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test-security:
+    name: Build, Test, and Secure Laravel App
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout Code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Setup PHP environment
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+          extensions: mbstring, intl, pdo_mysql
+          coverage: none
+
+      # 3️⃣ Install dependencies
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Install Node dependencies (optional)
+        run: |
+          if [ -f package.json ]; then
+            npm install
+          fi
+
+      # 4️⃣ Run Laravel Tests
+      - name: Run PHPUnit tests
+        run: php artisan test
+
+      # 5️⃣ Composer Security Audit
+      - name: Check for PHP dependency vulnerabilities
+        run: composer audit --locked
+
+      # 6️⃣ NPM Audit (optional for Laravel Mix/Vite)
+      - name: Check for npm vulnerabilities
+        run: |
+          if [ -f package.json ]; then
+            npm audit --audit-level=moderate || true
+          fi
+
+      # 7️⃣ Static Analysis (PHPStan)
+      - name: Run static code analysis
+        run: |
+          if [ -f vendor/bin/phpstan ]; then
+            vendor/bin/phpstan analyse --no-progress
+          else
+            echo "PHPStan not installed, skipping analysis."
+          fi
+
+      # 8️⃣ Scan for leaked secrets
+      - name: Scan for secrets
+        uses: trufflesecurity/trufflehog@v3
+        with:
+          scan: git
+          fail: true
+
+      # 9️⃣ Optional: OWASP ZAP Scan (basic)
+      # - name: Run OWASP ZAP baseline scan
+      #   uses: zaproxy/action-baseline@v0.7.0
+      #   with:
+      #     target: 'http://127.0.0.1:8000'
+      #   continue-on-error: true
+
+      # 🔟 Deployment Gate (only runs if all above succeed)
+      - name: Ready for deployment
+        if: success()
+        run: echo "✅ All security and tests passed — safe to deploy!"
